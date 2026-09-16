@@ -1,0 +1,7 @@
+.calculator {
+  width: min(360px, 92vw);
+  background-color: #000000;
+  border-radius: 2rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}

@@ -1,0 +1,11 @@
+# Compiled output
+*.exe
+/bin/
+/api
+
+# Test output
+*.test
+coverage.out
+
+# Real configuration — only .env.example is tracked
+.env

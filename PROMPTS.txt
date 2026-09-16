@@ -1,0 +1,526 @@
+Prompts used during development
+================================
+
+This file documents the prompts used to develop this project with an AI
+coding assistant, in the order they were given.
+
+--------------- 1. --------------------------------
+
+Objetivo: construir el backend de una API REST en Go para una calculadora,
+con arquitectura MVC y una separación estricta de responsabilidades entre
+modelo, controlador y capa de presentación.
+
+Alcance funcional
+- Operaciones: suma, resta, multiplicación, división, potenciación, raíz
+  cuadrada y porcentaje.
+- Un endpoint independiente por operación, no un endpoint genérico que
+  reciba el operador como parámetro. Antes de escribir código, explícame
+  el diseño de cada endpoint: método HTTP, ruta, forma del payload de
+  entrada y forma de la respuesta tanto en éxito como en error.
+- Validar la entrada en cada endpoint: campos faltantes, valores no
+  numéricos, JSON malformado.
+- Manejar los casos borde propios de cada operación (división por cero,
+  raíz de un número negativo, resultados no representables, etc.)
+  devolviendo un error claro con el código HTTP correcto. Un caso
+  esperado nunca debería terminar en un 500.
+- Formato de respuesta JSON consistente en toda la API, tanto para
+  resultados como para errores.
+
+Estructura de carpetas
+- Sigue el layout estándar de un proyecto en Go: cmd/ para el punto de
+  entrada, con un main.go que solo arma las piezas (config, modelo,
+  controlador, router) y arranca el servidor, sin lógica propia ahí.
+- Todo el código del proyecto va en internal/, organizado en un paquete
+  por responsabilidad: uno para el modelo de cálculo, uno para los
+  handlers HTTP, uno para la construcción y serialización de la
+  respuesta, uno para el enrutamiento y uno para la carga de
+  configuración desde variables de entorno.
+- Cada paquete importa solo lo que necesita: el paquete del modelo no
+  puede depender de net/http ni de nada relacionado con HTTP, y el
+  paquete de los handlers no debe construir el JSON de la respuesta
+  directamente, eso le corresponde al paquete de presentación.
+- Nombra los paquetes y archivos de forma que el propósito de cada uno
+  se entienda sin tener que abrir el archivo.
+- Antes de escribir una sola línea de código, muéstrame el árbol completo
+  de carpetas y archivos, con una frase por archivo explicando qué va
+  ahí, para revisarlo y aprobarlo antes de que generes nada.
+
+Configuración
+- Nada quemado en el código: puerto del servidor, orígenes permitidos
+  por CORS y la precisión decimal de los resultados deben venir de
+  variables de entorno, con valores por defecto si no están definidas.
+- Incluye un archivo de ejemplo con las variables esperadas.
+
+Precisión numérica
+- Define una estrategia de redondeo explícita para evitar el ruido de
+  la aritmética de punto flotante, y que la precisión sea configurable
+  en vez de estar fija en el código.
+
+CORS
+- Middleware de CORS aplicado de forma global, con los orígenes
+  permitidos configurables por variable de entorno.
+
+Pruebas
+- Unitarias para el modelo, cubriendo casos normales y casos borde de
+  cada operación.
+- Para el controlador, verificando validación de entrada, manejo de
+  errores y que cada ruta responde como se espera.
+- Al terminar, corre las pruebas con reporte de cobertura y muéstrame
+  el resultado.
+
+Documentación
+- Todo el código (nombres de variables, comentarios, mensajes de log,
+  campos de las respuestas JSON) y el archivo README.md deben quedar
+  estrictamente en inglés, aunque yo te esté hablando en español durante
+  todo el desarrollo.
+- El README debe incluir: setup instructions, cómo correr el proyecto,
+  ejemplos de llamadas a la API con request y response de cada endpoint,
+  una sección de decisiones de diseño explicando los trade-offs tomados,
+  y una sección final titulada "Prompts Used", dejada como un bloque
+  vacío o con un placeholder, lista para que yo pegue ahí los prompts
+  que usé.
+
+No generes ningún archivo hasta que hayamos revisado juntos el árbol de
+carpetas y el contrato completo de cada endpoint.
+
+
+
+--------------- 2. --------------------------------
+
+Apruebo el árbol de carpetas y el contrato tal cual. Sobre percentage,
+quédate con la interpretación "percentage% of value"
+(result = value * (percentage / 100)), como el botón % de una
+calculadora estándar — no agregues un segundo endpoint para la otra
+interpretación. El CORS se queda dentro de router/, no hace falta un
+paquete middleware/ aparte. La convención 0^0 = 1 en power también
+queda como la propusiste. Puedes proceder a implementar.
+
+--------------- 3. --------------------------------
+
+Objetivo: construir el frontend de una aplicación de calculadora,
+consumiendo la API REST que ya está implementada en el backend. La
+interfaz debe seguir una estética tipo Apple Calculator: paleta
+estricta en negro/gris/blanco, sin colores de acento, espaciado
+generoso, botones redondeados, un display numérico grande y legible, y
+un tono general sobrio y minimalista.
+
+Stack
+- React con TypeScript, usando Vite como build tool (no uses Create
+  React App, está deprecado).
+- Solo componentes funcionales y hooks. Usa el estado propio de React
+  (useState/useReducer) para el estado de la calculadora; no agregues
+  una librería de manejo de estado, no hay una necesidad real de eso
+  acá.
+- Estilos con CSS Modules planos, una hoja de estilos junto a cada
+  componente. Nada de Tailwind, styled-components, ni una librería de
+  UI — el lenguaje visual es lo suficientemente específico como para
+  que un kit de componentes estorbe más de lo que ayude.
+
+Arquitectura (inspirada en MVC, mismo espíritu que el backend)
+- Model: tipos de TypeScript que espejan el contrato de request/response
+  del backend para cada operación, más un cliente API delgado que
+  envuelve cada llamada fetch y devuelve un resultado tipado o un error
+  tipado. Toda la lógica real de cálculo vive en el backend; el trabajo
+  de esta capa es solo representar ese contrato fielmente en el
+  frontend.
+- Controller: un hook propio que mantiene el estado de la calculadora
+  (valor actual en pantalla, operando pendiente, operación pendiente) y
+  orquesta qué pasa en cada botón presionado, incluyendo llamar al
+  cliente API y actualizar el estado con el resultado o el error. Este
+  es el equivalente idiomático de React a un controlador — los hooks
+  son la forma en que React extrae lógica con estado fuera del
+  renderizado, de la misma manera que `handler` en el backend usó el
+  vocabulario propio de Go en vez de tomar prestado `controller` de
+  otro framework. Documenta este mapeo explícitamente en el README, tal
+  como hicimos con el backend.
+- View: componentes puramente presentacionales (display, teclado, botón
+  individual) que reciben props y renderizan, sin lógica propia más
+  allá de lo necesario para mostrar el estado y reenviar los eventos de
+  click hacia arriba.
+
+Alcance funcional
+- Las siete operaciones del backend: suma, resta, multiplicación,
+  división, potencia, raíz cuadrada y porcentaje.
+- Validación de entrada en el frontend antes de llamar a la API (por
+  ejemplo, no dejar que el usuario envíe una expresión incompleta),
+  además de lo que ya valida el backend.
+- Cada código de error del backend (INVALID_JSON, MISSING_FIELD,
+  INVALID_NUMBER, DIVISION_BY_ZERO, NEGATIVE_SQRT_INPUT,
+  RESULT_NOT_FINITE, NOT_FOUND, METHOD_NOT_ALLOWED, INTERNAL_ERROR)
+  debe mapear a un mensaje distinto y claro mostrado en pantalla. No
+  los colapses todos en un "Error" genérico.
+- Layout responsive con soporte básico para mobile, ya que la interfaz
+  tiene que ser usable en una pantalla pequeña sin rediseñarla.
+
+Configuración
+- La URL base del backend debe venir de una variable de entorno
+  (convención de Vite: VITE_API_BASE_URL), nunca hardcodeada. Incluye
+  un archivo .env.example.
+- Anota en el README que el origen del dev server del frontend necesita
+  agregarse al CORS_ALLOWED_ORIGINS del backend para que las peticiones
+  funcionen durante el desarrollo local.
+
+Pruebas
+- Vitest y React Testing Library.
+- Tests unitarios para el hook controlador, mockeando el cliente API
+  para que los tests no dependan de un backend corriendo.
+- Tests para los componentes de presentación clave (renderizado,
+  callbacks de click disparándose correctamente).
+- Sigue la misma convención de tests que el backend: los archivos de
+  test viven junto al archivo que prueban (ej. Keypad.test.tsx al lado
+  de Keypad.tsx), no en una carpeta de tests separada — esa es la
+  convención idiomática también en este ecosistema, no solo en Go.
+
+Documentación
+- Todo el código, los comentarios y el README deben estar en inglés.
+- Crea frontend/README.md con instrucciones de instalación, cómo correr
+  el dev server, las variables de entorno, y una sección corta de
+  decisiones de diseño explicando el mapeo Model/Controller/View de
+  arriba.
+- También crea (o actualiza, si ya existe) un README.md a nivel raíz
+  que introduzca brevemente todo el proyecto y enlace a
+  backend/README.md y frontend/README.md para los detalles, con una
+  única sección "Prompts Used" consolidada en la raíz — quita el
+  placeholder de backend/README.md para que quede solo una de esas
+  secciones para todo el repositorio.
+
+Antes de escribir código, muéstrame el árbol completo de archivos con
+una línea por archivo explicando su propósito, confirma el enfoque de
+estilos, y confirma este mapeo MVC. Espera mi aprobación antes de
+implementar.
+
+Adicionalmente: una vez que el frontend esté armado y antes de darlo
+por terminado, actualiza el archivo .env del backend (no el
+.env.example) para que CORS_ALLOWED_ORIGINS incluya el origen por
+defecto del dev server de Vite, http://localhost:5173. Levanta el
+backend y el frontend al mismo tiempo y haz una prueba de integración
+real desde el navegador (no desde curl ni Postman) contra al menos dos
+operaciones, una exitosa y una que dispare un error de dominio, para
+confirmar que el CORS y el contrato completo funcionan de punta a
+punta. Muéstrame el resultado de esa prueba.
+
+
+--------------- 4. --------------------------------
+
+Apruebo el plan completo: la reestructuración a backend/ y frontend/,
+el árbol del frontend tal cual lo propusiste, la paleta y el layout de
+la calculadora, y el mapeo MVC del README. Como no hay repo git
+todavía, puedes mover las carpetas directamente sin necesidad de nada
+adicional.
+
+Cambio de documentación: en vez de una sección "Prompts Used" dentro
+del README raíz, crea un archivo PROMPTS.txt en la raíz del proyecto
+(al mismo nivel que backend/ y frontend/), vacío o con un placeholder
+breve indicando que ahí van los prompts usados durante el desarrollo.
+Quita cualquier sección "Prompts Used" que hayas dejado en el README
+raíz o en backend/README.md, y en su lugar agrega una línea corta en
+el README raíz que diga que los prompts usados están documentados en
+PROMPTS.txt.
+
+Procede con todo lo anterior y muéstrame el resultado.
+
+--------------- 5. --------------------------------
+Vamos a agregar tres mejoras sobre lo ya construido, sin tocar la
+máquina de estados existente ni el comportamiento del renglón de
+operación pendiente que ya corregimos.
+
+1. Soporte de teclado físico
+- Agrega un listener de teclado global (a nivel de App o Calculator,
+  no uno por botón) que dispare exactamente las mismas funciones que ya
+  invoca el Keypad al hacer click — no dupliques lógica, reusa los
+  mismos handlers del hook.
+- Mapeo de teclas:
+  - dígitos 0-9 → ingresar dígito
+  - "." → punto decimal
+  - "+" → suma
+  - "-" → resta
+  - "*" o "x" → multiplicación
+  - "/" → división
+  - "Enter" o "=" → igual
+  - "Backspace" → borrar último dígito (⌫)
+  - "Escape" → limpiar (C)
+  - "%" → porcentaje
+- No mapees xʸ (potencia) ni √ (raíz): no tienen una tecla física
+  estándar y sin ambigüedad, deben seguir siendo solo de click. No
+  inventes una tecla para ellas.
+- Usa preventDefault solo en las teclas que sí manejas, para evitar
+  que el navegador dispare su propio comportamiento (por ejemplo "/"
+  abriendo la búsqueda rápida de Firefox).
+- Limpia el listener al desmontar el componente (cleanup en useEffect).
+- Agrega tests disparando eventos de teclado (fireEvent.keyDown) que
+  confirmen al menos: una tecla numérica actualiza el display, Enter
+  funciona igual que hacer click en =, Escape limpia todo, y Backspace
+  borra el último carácter.
+
+2. Formato de miles en el display
+- Crea una función de formateo pura y testeable en la capa de modelo
+  (no dentro de un componente) que agregue separadores de miles a la
+  parte entera de un número, sin alterar la parte decimal tal como la
+  escribió el usuario.
+- Reglas:
+  - No debe tocar un punto decimal final mientras el usuario sigue
+    escribiendo (ej. "1234." se ve "1,234." no "1,234").
+  - No debe recortar ni redondear ceros finales en la parte decimal
+    (ej. "1000.50" se mantiene como "1,000.50").
+  - El signo negativo debe quedar pegado al número, sin que el
+    agrupamiento lo afecte.
+  - Aplica este mismo formato tanto al display principal como al
+    renglón de operación pendiente, para que "1000 +" también se vea
+    "1,000 +".
+- Escribe tests unitarios de esta función directamente (sin pasar por
+  la UI) cubriendo: números enteros, números con punto decimal al
+  final, números con decimales, números negativos y cero.
+
+3. Manejo de números que no caben en el display
+- Esto es distinto de RESULT_NOT_FINITE (Infinity/NaN), que ya se
+  maneja como error del backend. Esto es sobre un resultado válido y
+  finito pero demasiado largo para mostrarse con claridad (ej. un
+  entero de 18-20 dígitos, o un resultado con muchos decimales después
+  de redondear).
+- Define y documenta un umbral claro (por cantidad de caracteres tras
+  formatear, o por la magnitud del número) a partir del cual el
+  display cambia a notación científica con una cantidad fija y
+  razonable de dígitos significativos, igual que hace una calculadora
+  física cuando un resultado desborda su capacidad de dígitos.
+- Esta lógica va en el mismo módulo de formateo del punto 2, ya que
+  ambos resuelven el mismo problema ("cómo se ve este número en el
+  espacio limitado del display") — no los separes en dos utilidades
+  sin relación entre sí.
+- Escribe tests específicos para el umbral: un número justo debajo
+  (se muestra normal con separadores de miles), uno justo arriba (se
+  muestra en notación científica), y confirma que el cambio no rompe
+  el formateo de miles para los números por debajo del umbral.
+
+Antes de escribir código, muéstrame:
+- El umbral exacto que vas a usar en el punto 3 y por qué,
+- La firma de la función de formateo compartida entre los puntos 2 y 3,
+- Cómo vas a enganchar el listener de teclado a los mismos handlers
+  que ya usa el Keypad, sin duplicar lógica.
+
+--------------- 6. --------------------------------
+
+Antes de implementar, necesito que aclares tres cosas del diseño:
+
+1. El umbral de 15 dígitos: tu justificación menciona que
+   Number.MAX_SAFE_INTEGER tiene "~16 dígitos", pero el valor real
+   (9007199254740991) tiene exactamente 16 dígitos, no ~16. ¿15 es un
+   margen de seguridad intencional respecto a ese límite, o el cálculo
+   fue aproximado? Confirma el número final con la razón exacta.
+
+2. Agrega un caso de test que combine parte entera y decimal sumando
+   justo en el umbral y justo por encima (ej. algo como
+   "1234567890.1234" vs "1234567890.12345"), no solo enteros puros
+   como en tu ejemplo actual — es el escenario donde el conteo de
+   dígitos totales es más fácil de calcular mal.
+
+3. Sobre backspace(): al ser un método nuevo que hoy solo se puede
+   disparar desde el teclado físico, ¿tiene sentido agregar también un
+   botón ⌫ al Keypad para que sea accesible por los dos canales, o lo
+   dejamos solo para teclado por ahora? Dime tu recomendación antes de
+   implementar.
+
+Con esas tres respuestas, procede con el resto del diseño tal como lo
+planteaste.
+
+--------------- 7. --------------------------------
+
+Agrega una sección de despliegue con Docker, pensada para que cualquiera
+que clone el repo pueda levantar todo con un solo comando, sin instalar
+Go, Node ni nada más que Docker y Docker Compose.
+
+Backend (backend/Dockerfile)
+- Build multi-stage: una etapa con la imagen oficial de Go que compila
+  un binario estático, y una etapa final mínima (alpine o scratch) que
+  solo contiene ese binario. No dejes el SDK de Go ni el código fuente
+  en la imagen final.
+- El puerto que expone el contenedor debe coincidir con SERVER_PORT.
+- No copies ningún archivo .env dentro de la imagen — la configuración
+  debe llegar exclusivamente vía las variables de entorno que le pase
+  Docker Compose en tiempo de ejecución, igual que ya soporta
+  config.Load() (os.Getenv) sin necesidad del dotenv loader interno.
+
+Frontend (frontend/Dockerfile)
+- Build multi-stage: una etapa con Node que corre npm ci && npm run
+  build, y una etapa final con una imagen liviana de servidor estático
+  (nginx:alpine es razonable) que solo sirve el contenido de dist/.
+- VITE_API_BASE_URL debe recibirse como ARG de build (no como
+  environment de runtime, porque Vite la incrusta en el JS al momento
+  de compilar, no la lee después). Documenta esto con un comentario en
+  el Dockerfile para que quede claro por qué es un ARG y no un ENV.
+- Esa URL tiene que ser la dirección tal como la ve el navegador de
+  quien prueba la app (el puerto del backend mapeado al host, ej.
+  http://localhost:8080), nunca el nombre del servicio de Docker
+  Compose — el navegador no resuelve nombres de la red interna de
+  contenedores.
+
+docker-compose.yml (en la raíz del proyecto)
+- Dos servicios: backend y frontend, cada uno construido desde su
+  propio Dockerfile.
+- Puertos mapeados a variables con defaults razonables usando la
+  sintaxis ${VAR:-default} de Compose, para que alguien pueda cambiar
+  el puerto sin editar el archivo (ej. backend en 8080, frontend en
+  3000).
+- El build del frontend debe pasar VITE_API_BASE_URL como build arg
+  apuntando al puerto del backend expuesto en el host (no al nombre
+  del servicio "backend").
+- CORS_ALLOWED_ORIGINS del backend debe incluir el origen exacto donde
+  quedará expuesto el frontend (ej. http://localhost:3000), coherente
+  con el puerto que hayas definido arriba.
+- Nada de servicios extra, redes custom complejas ni volúmenes
+  innecesarios — el objetivo es que "docker compose up --build" sea
+  suficiente para tener todo arriba.
+
+.dockerignore
+- Uno para backend/ (excluir binarios compilados, coverage.out) y otro
+  para frontend/ (excluir node_modules, dist, .env), para que el
+  contexto de build no arrastre basura innecesaria.
+
+Documentación
+- Agrega la sección "Despliegue / Docker" al README raíz: prerequisitos
+  (Docker + Docker Compose), el comando único para levantar todo
+  (docker compose up --build), qué puertos quedan expuestos y cómo
+  acceder a cada servicio, y una nota explicando por qué
+  VITE_API_BASE_URL debe ser una URL alcanzable desde el navegador del
+  host y no el nombre interno del servicio.
+
+Antes de escribir ningún archivo, muéstrame el plan completo: los
+puertos que vas a usar, cómo vas a pasar VITE_API_BASE_URL como build
+arg en el compose, y cómo va a quedar CORS_ALLOWED_ORIGINS. Espero tu
+aprobación antes de implementar.
+
+Una vez aprobado y ya construidos los archivos: corre
+"docker compose up --build" de verdad, y desde el navegador (no curl)
+confirma que la calculadora carga en el puerto del frontend y que al
+menos una operación exitosa y una que dispare un error de dominio
+funcionan correctamente contra el backend en contenedores. Muéstrame
+el resultado, y después baja los contenedores.
+
+--------------- 8. --------------------------------
+
+Apruebo el plan completo tal cual: los puertos (BACKEND_PORT=8080,
+FRONTEND_PORT=3000 con esos defaults), cómo queda wireado
+VITE_API_BASE_URL como build arg apuntando a
+http://localhost:${BACKEND_PORT:-8080}, CORS_ALLOWED_ORIGINS apuntando
+a http://localhost:${FRONTEND_PORT:-3000}, y alpine para ambas imágenes
+finales con el backend corriendo como usuario no-root.
+
+Antes de dar por terminado el backend/Dockerfile: confirma explícitamente
+que el build con CGO_ENABLED=0 más el binario corriendo sobre
+alpine:3.20 (musl, no glibc) funciona sin errores de compatibilidad al
+arrancar el contenedor — no solo que el build termina sin errores, sino
+que el contenedor efectivamente levanta y responde. Si encontraras
+algún problema de compatibilidad ahí, dime qué encontraste antes de
+aplicar un workaround.
+
+Procede con la implementación completa.
+
+--------------- 9. --------------------------------
+
+Revisa la sección "Deployment / Docker" del README.md raíz y confirma
+que refleje exactamente este flujo, pensado para cualquier persona que
+clone el repo en cualquier sistema operativo (no solo Windows):
+
+1. Prerequisitos: únicamente Git y Docker Desktop (que incluye Docker
+   Compose v2) — nada de instalar Go o Node por separado.
+2. Clonar el repositorio y ubicarse en la raíz del proyecto.
+3. Levantar todo con un solo comando: docker compose up --build.
+4. Abrir http://localhost:3000 en el navegador y probar la calculadora.
+5. Si el puerto 8080 o 3000 ya está ocupado en esa máquina: crear un
+   archivo .env en la raíz con BACKEND_PORT y/o FRONTEND_PORT distintos,
+   y volver a correr con --build (necesario porque el frontend necesita
+   la URL nueva incrustada en su build).
+6. Para detener todo: docker compose down.
+
+Si encuentras que el README tiene algún comando específico de Windows
+(taskkill, netstat, o similar) mezclado en esta sección, o pasos de
+debugging que solo aplican a un entorno de desarrollo particular,
+sácalos de ahí — esta sección debe asumir una máquina limpia que nunca
+corrió el proyecto antes, no un entorno que ya tenía procesos previos
+corriendo.
+
+Muéstrame el contenido final de esa sección para confirmar antes de
+darlo por terminado.
+
+--------------- 10. --------------------------------
+
+Vamos a subir el proyecto completo a GitHub, en el repositorio ya
+creado: https://github.com/WilsonVlandia/Calculator
+
+Antes de hacer ningún push, prepara y muéstrame el plan:
+
+1. Verifica el estado actual: confirma que no hay un repo git
+   inicializado todavía en la raíz del proyecto (git status). Si lo
+   hay, revisa que no tenga commits previos que puedan pisarse.
+
+2. Revisa/crea los archivos .gitignore necesarios antes de agregar
+   nada:
+   - En la raíz: artefactos de SO/editor (.DS_Store, Thumbs.db).
+   - En backend/: binarios compilados (*.exe, /bin, cualquier salida de
+     go build), coverage.out, y el archivo .env (el .env.example sí
+     debe subirse, el .env real no).
+   - En frontend/: node_modules, dist, y el archivo .env (igual que en
+     el backend, .env.example sí se sube).
+   Haz un dry-run (git add -n . o equivalente) y muéstrame la lista
+   completa de archivos que quedarían staged ANTES de confirmar nada,
+   para que yo revise que no se cuele ningún .env, node_modules,
+   binario, ni ninguna ruta local (como algo con "C:\Users\wimiv\...")
+   que no debería ser pública.
+
+3. Verifica el estado del repositorio remoto antes de asumir que está
+   vacío: corre git ls-remote https://github.com/WilsonVlandia/Calculator
+   y dime si ya tiene commits (por ejemplo, si GitHub lo inicializó con
+   un README o licencia al crearlo). Si tiene contenido, no hagas push
+   directo ni force-push — dime qué encontraste y cómo lo resolverías
+   antes de tocar nada.
+
+4. Si el remoto está vacío: inicializa el repo git en la raíz, agrega
+   el remoto origin apuntando a esa URL, crea un solo commit inicial
+   con un mensaje descriptivo (algo como "Initial commit: full-stack
+   calculator with Go backend, React frontend, and Docker deployment"),
+   usando main como nombre de rama.
+
+Muéstrame el resultado de los pasos 1 a 3 (especialmente la lista de
+archivos que se subirían) antes de ejecutar el commit y el push. Espero
+mi confirmación explícita antes de que el push realmente ocurra.
+
+--------------- 11. --------------------------------
+
+Importante sobre la autoría del commit: no incluyas ninguna línea de
+"Co-Authored-By: Claude" ni ninguna mención a Claude, Claude Code, o
+cualquier herramienta de IA en el mensaje de commit. El commit debe
+aparecer con mi autoría exclusivamente.
+
+Antes de commitear, verifica con git config user.name y git config
+user.email (tanto a nivel local del repo como global) que estén
+configurados con mi nombre y correo, no con ningún valor por defecto
+o genérico. Si no están configurados, pregúntame qué nombre y correo
+usar antes de continuar — no uses un placeholder.
+
+El mensaje de commit debe ser solo el texto descriptivo que ya
+definimos, sin ningún trailer adicional de coautoría ni firma
+generada automáticamente.
+
+--------------- 12. --------------------------------
+
+Antes de comitear: revisa PROMPTS.txt y confirma que incluye todos los
+prompts usados hasta ahora, en particular los de las tres mejoras del
+frontend (teclado físico, formato de miles, notación científica y el
+backspace) y los del despliegue con Docker — si alguno quedó afuera,
+agrégalo ahora, antes del commit inicial.
+
+Confirmado: Wilson Moreno <wvelandia79@gmail.com> es la identidad
+correcta para este repositorio. Configúrala a nivel local del repo con
+git config user.name / user.email (no dependas solo de la global, para
+que quede explícito en este proyecto puntual), y procede con:
+
+1. git add -A
+2. Un solo commit con el mensaje "Initial commit: full-stack calculator
+   with Go backend, React frontend, and Docker deployment" — sin ningún
+   trailer de coautoría ni firma de herramientas de IA.
+3. git branch -M main
+4. git remote add origin https://github.com/WilsonVlandia/Calculator.git
+5. git push -u origin main
+
+Antes de ejecutar el push (paso 5), muéstrame el resultado de
+git log -1 --format="%an <%ae>%n%B" para que confirme que el commit
+quedó con la autoría y el mensaje correctos antes de que se suba.

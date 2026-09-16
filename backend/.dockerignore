@@ -1,0 +1,8 @@
+# Never ship real configuration into the image — it must come from
+# environment variables passed by Docker Compose at runtime instead.
+.env
+
+# Build artifacts and test output, not needed in the build context.
+*.exe
+*.test
+coverage.out
